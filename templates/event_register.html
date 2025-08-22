@@ -1,0 +1,175 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2>Register for {{ event.name }}</h2>
+<form method="post" id="regForm" data-can-edit="{{ 1 if can_edit else 0 }}">
+  <p>Participants required: {{ event.participants }}</p>
+  <p id="usageLine" style="margin-top:-8px;color:var(--muted);">
+    <span id="usedCount">0</span>/<span id="maxCount">{{ event.participants }}</span> added
+  </p>
+  <div id="participants">
+    {% set i = 0 %}
+    {% for p in existing %}
+      <fieldset>
+        <legend>Participant {{ loop.index }}</legend>
+  <label>Name<input type="text" data-field="name" name="name_{{ loop.index0 }}" value="{{ p.name }}" required {% if not can_edit %}disabled{% endif %}></label>
+  <label>Class<input type="text" data-field="class" name="class_{{ loop.index0 }}" value="{{ p.class }}" required {% if not can_edit %}disabled{% endif %}></label>
+  <label>Email<input type="email" data-field="email" name="email_{{ loop.index0 }}" value="{{ p.email }}" required {% if not can_edit %}disabled{% endif %}></label>
+  <label>Phone<input type="text" data-field="phone" name="phone_{{ loop.index0 }}" value="{{ p.phone }}" required {% if not can_edit %}disabled{% endif %}></label>
+        <div style="margin-top:6px;">
+    {% if can_edit %}<button type="button" class="remove-btn" onclick="removeP(this)">Remove</button>{% endif %}
+        </div>
+      </fieldset>
+    {% endfor %}
+  </div>
+  <input type="hidden" name="count" id="count" value="{{ existing|length if existing else 0 }}">
+  {% if can_edit %}
+  <button type="button" id="addBtn" onclick="addP()">Add Participant</button>
+  <button type="submit">Save</button>
+  {% else %}
+  <p><em>Registration editing is disabled by admin or deadline passed.</em></p>
+  {% endif %}
+</form>
+
+<dialog id="warnDialog">
+  <p id="warnText">Warning</p>
+  <form method="dialog">
+    <button value="ok">OK</button>
+  </form>
+  <style>
+  dialog { border: 1px solid var(--card-border); background: var(--surface); color: var(--text); border-radius: 8px; padding: 1rem; }
+  </style>
+  </dialog>
+<dialog id="confirmDialog">
+  <p id="confirmText">Confirm</p>
+  <menu style="display:flex; gap:.5rem; justify-content:flex-end;">
+    <button value="cancel">Cancel</button>
+    <button id="confirmYes" value="yes" class="contrast">Yes</button>
+  </menu>
+  <style>
+  dialog { border: 1px solid var(--card-border); background: var(--surface); color: var(--text); border-radius: 8px; padding: 1rem; }
+  </style>
+  </dialog>
+<script>
+const maxAllowed = parseInt(document.getElementById('maxCount').textContent, 10) || 0;
+const countInput = document.getElementById('count');
+const addBtn = document.getElementById('addBtn');
+const usedCountEl = document.getElementById('usedCount');
+const maxCountEl = document.getElementById('maxCount');
+const CAN_EDIT = (document.getElementById('regForm')?.dataset?.canEdit === '1');
+
+function updateUI(){
+  const wrap = document.getElementById('participants');
+  const sets = wrap.querySelectorAll('fieldset');
+  const used = sets.length;
+  usedCountEl.textContent = used;
+  maxCountEl.textContent = maxAllowed;
+  countInput.value = used;
+  if (addBtn) { addBtn.disabled = used >= maxAllowed; }
+}
+
+function reindex(){
+  const wrap = document.getElementById('participants');
+  const sets = wrap.querySelectorAll('fieldset');
+  sets.forEach((fs, i) => {
+    const lg = fs.querySelector('legend');
+    if (lg) lg.textContent = `Participant ${i+1}`;
+    const nameI = fs.querySelector('input[data-field="name"]');
+    const classI = fs.querySelector('input[data-field="class"]');
+    const emailI = fs.querySelector('input[data-field="email"]');
+    const phoneI = fs.querySelector('input[data-field="phone"]');
+    if (nameI) nameI.name = `name_${i}`;
+    if (classI) classI.name = `class_${i}`;
+    if (emailI) emailI.name = `email_${i}`;
+    if (phoneI) phoneI.name = `phone_${i}`;
+  if (CAN_EDIT && !fs.querySelector('.remove-btn')) {
+      const div = document.createElement('div');
+      div.style.marginTop = '6px';
+      div.innerHTML = '<button type="button" class="remove-btn" onclick="removeP(this)">Remove</button>';
+      fs.appendChild(div);
+    }
+  });
+  updateUI();
+}
+
+function removeP(btn){
+  const fs = btn.closest('fieldset');
+  if (!fs) return;
+  fs.remove();
+  reindex();
+}
+
+function addP(){
+  if (!CAN_EDIT) return;
+  const wrap = document.getElementById('participants');
+  const current = wrap.querySelectorAll('fieldset').length;
+  if (current >= maxAllowed) {
+    updateUI();
+    return;
+  }
+  const idx = current;
+  const f = document.createElement('fieldset');
+  f.innerHTML = `
+    <legend>Participant ${idx+1}</legend>
+    <label>Name<input type="text" data-field="name" name="name_${idx}" required></label>
+    <label>Class<input type="text" data-field="class" name="class_${idx}" required></label>
+    <label>Email<input type="email" data-field="email" name="email_${idx}" required></label>
+    <label>Phone<input type="text" data-field="phone" name="phone_${idx}" required></label>
+    <div style="margin-top:6px;">
+      <button type="button" class="remove-btn" onclick="removeP(this)">Remove</button>
+    </div>
+  `;
+  wrap.appendChild(f);
+  updateUI();
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  reindex();
+  const form = document.querySelector('form');
+  if (form) {
+    form.addEventListener('submit', (e) => {
+      const wrap = document.getElementById('participants');
+      const used = wrap.querySelectorAll('fieldset').length;
+      if (used === 0) {
+        e.preventDefault();
+        showConfirm('You are deregistering from this event. Continue?', () => {
+          document.getElementById('count').value = 0;
+          form.submit();
+        });
+        return;
+      }
+      if (used !== maxAllowed) {
+        e.preventDefault();
+        showWarn(`This event requires exactly ${maxAllowed} participant(s). You currently have ${used}.`);
+      }
+    });
+  }
+  if (!CAN_EDIT) {
+    if (addBtn) addBtn.setAttribute('disabled','disabled');
+    document.querySelectorAll('#participants input').forEach(i=>i.setAttribute('disabled','disabled'));
+  }
+});
+
+function showWarn(message){
+  const dlg = document.getElementById('warnDialog');
+  const txt = document.getElementById('warnText');
+  if (!dlg || !txt) return;
+  txt.textContent = message;
+  if (typeof dlg.showModal === 'function') dlg.showModal(); else dlg.setAttribute('open','open');
+}
+
+function showConfirm(message, onYes){
+  const dlg = document.getElementById('confirmDialog');
+  const txt = document.getElementById('confirmText');
+  const yes = document.getElementById('confirmYes');
+  if (!dlg || !txt || !yes) return;
+  txt.textContent = message;
+  const handler = () => {
+    yes.removeEventListener('click', handler);
+    dlg.close();
+    if (typeof onYes === 'function') onYes();
+  };
+  yes.addEventListener('click', handler);
+  if (typeof dlg.showModal === 'function') dlg.showModal(); else dlg.setAttribute('open','open');
+}
+</script>
+{% endblock %}

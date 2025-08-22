@@ -1,0 +1,28 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2>Submit Entry - {{ event.name }}</h2>
+
+{% if mode == 'link_password' %}
+  <p>Please enter the password for this submission link.</p>
+  <form method="post">
+    <label>Password<input type="password" name="password" required></label>
+    <button type="submit">Continue</button>
+  </form>
+{% elif mode == 'link_form' %}
+  <form method="post">
+    <label>Entry Data (URL/text)<textarea name="entry_data" required></textarea></label>
+    <button type="submit">Submit</button>
+  </form>
+{% else %}
+  <form method="post">
+    {% if mode == 'dashboard' %}
+      <p>Submitting as your school. No password needed.</p>
+    {% else %}
+      <label>School ID<input type="text" name="school_id" required></label>
+      <label>Submission Password<input type="password" name="password" required></label>
+    {% endif %}
+    <label>Entry Data (URL/text)<textarea name="entry_data" required></textarea></label>
+    <button type="submit">Submit</button>
+  </form>
+{% endif %}
+{% endblock %}

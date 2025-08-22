@@ -1,0 +1,67 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2>Edit User</h2>
+<form method="post">
+  <label>Role
+    <select name="role" id="roleSelect">
+      <option value="school" {% if u.role=='school' %}selected{% endif %}>School</option>
+      <option value="event_head" {% if u.role=='event_head' %}selected{% endif %}>Event Head</option>
+      <option value="overall" {% if u.role=='overall' %}selected{% endif %}>Overall</option>
+    </select>
+  </label>
+  
+  <div id="eventHeadSection" style="{{ 'display: block;' if u.role=='event_head' else 'display: none;' }}">
+    <fieldset>
+      <legend>Assigned Events</legend>
+      <div class="event-checkbox-grid">
+        {% for id, e in events.items() %}
+          <label class="event-checkbox">
+            <input type="checkbox" name="assigned_events" value="{{ id }}" 
+                   {% if u.role=='event_head' and id in (u.assigned_events or []) %}checked{% endif %}> 
+            {{ e.name }}
+          </label>
+        {% endfor %}
+      </div>
+    </fieldset>
+  </div>
+  
+  <h3>Profile</h3>
+  <label>School Name<input type="text" value="{{ u.profile.school_name }}" disabled></label>
+  <label>School Address<textarea name="school_address">{{ u.profile.school_address }}</textarea></label>
+  <label>School Email<input type="email" name="school_email" value="{{ u.profile.school_email }}"></label>
+  <label>Teacher Name<input type="text" name="teacher_name" value="{{ u.profile.teacher_name }}"></label>
+  <label>Teacher Phone<input type="text" name="teacher_phone" value="{{ u.profile.teacher_phone }}"></label>
+  <label>Teacher Email<input type="email" name="teacher_email" value="{{ u.profile.teacher_email }}"></label>
+  <label>Student Name<input type="text" name="student_name" value="{{ u.profile.student_name }}"></label>
+  <label>Student Email<input type="email" name="student_email" value="{{ u.profile.student_email }}"></label>
+  <label>Student Phone<input type="text" name="student_phone" value="{{ u.profile.student_phone }}"></label>
+  <button type="submit">Save</button>
+</form>
+
+<style>
+  .event-checkbox-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 0.5rem;
+  }
+  
+  .event-checkbox {
+    display: flex;
+    align-items: center;
+    padding: 0.5rem;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 4px;
+  }
+  
+  .event-checkbox input[type="checkbox"] {
+    margin-right: 0.5rem;
+  }
+</style>
+
+<script>
+  document.getElementById('roleSelect').addEventListener('change', function() {
+    const eventHeadSection = document.getElementById('eventHeadSection');
+    eventHeadSection.style.display = this.value === 'event_head' ? 'block' : 'none';
+  });
+</script>
+{% endblock %}

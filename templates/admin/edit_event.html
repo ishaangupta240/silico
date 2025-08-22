@@ -1,0 +1,280 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2 style="margin-bottom:.25rem">Edit Event</h2>
+<p class="muted">Configure participants, prelims/finals criteria, and optional submissions.</p>
+<form method="post" id="eventForm" style="display:grid; gap:.75rem; align-items:start;">
+  <label>Name
+    <input type="text" name="name" value="{{ event.name }}" required id="eventName">
+  </label>
+  <label>Participants (exact required)
+    <input type="number" name="participants" value="{{ event.participants }}" min="1">
+  </label>
+  <fieldset style="display:flex; gap:1rem; align-items:center">
+    <label><input type="checkbox" name="has_prelims" id="has_prelims" {% if event.has_prelims %}checked{% endif %}> Has Prelims</label>
+    <label><input type="checkbox" name="has_submission" id="has_submission" {% if event.has_submission %}checked{% endif %}> Enable Submissions</label>
+  </fieldset>
+
+  <div id="submission_opts" {% if not event.has_submission %}hidden{% endif %} style="margin-bottom:.5rem;">
+    <label>Submission Max Changes
+      <input type="number" name="submission_max_changes" value="{{ event.submission_max_changes or 2 }}" min="1">
+    </label>
+  </div>
+
+  <h4 style="margin:.5rem 0 .25rem">Finals Criteria <span id="fin_validation" class="validation-error" style="display:none; color:red;">* Required</span></h4>
+  <div id="fin_list"></div>
+  <div style="display:flex; align-items:center; gap:.5rem">
+    <button type="button" id="fin_add">+ Add Criterion</button>
+    <small>Total max: <span id="fin_total">0</span></small>
+  </div>
+
+  <div id="pre_section" {% if not event.has_prelims %}hidden{% endif %}>
+    <h4 style="margin:.5rem 0 .25rem">Prelims Criteria <span id="pre_validation" class="validation-error" style="display:none; color:red;">* Required</span></h4>
+    <div id="pre_list"></div>
+    <div style="display:flex; align-items:center; gap:.5rem">
+      <button type="button" id="pre_add">+ Add Criterion</button>
+      <small>Total max: <span id="pre_total">0</span></small>
+    </div>
+  </div>
+
+  <h4 style="margin:.5rem 0 .25rem">Finals Position Points</h4>
+  <p class="muted" style="margin-top:-.25rem">1st, 2nd, and 3rd are required; add more if needed.</p>
+  <div id="pos_list"></div>
+  <div style="display:flex; align-items:center; gap:.5rem; margin-bottom:.5rem;">
+    <button type="button" id="pos_add">+ Add Position</button>
+    <small>Finals only</small>
+  </div>
+
+  <div style="display:flex; gap:.5rem; flex-wrap:wrap; margin-top:.5rem">
+    <button type="submit" id="submitBtn" class="contrast">Save</button>
+    <a href="{{ url_for('manage_event', event_id=event_id) }}" role="button" class="secondary">Cancel</a>
+  </div>
+</form>
+
+<script id="data-fin" type="application/json">{{ event.criteria_finals | tojson }}</script>
+<script id="data-pre" type="application/json">{{ event.criteria_prelims | tojson }}</script>
+<script id="data-pos" type="application/json">{{ (event.position_points or {'1':60,'2':55,'3':40,'4':30}) | tojson }}</script>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+  let fin = [];
+  try { fin = JSON.parse(document.getElementById('data-fin').textContent || '[]'); } catch(_) { fin = []; }
+    if (fin.length > 0) {
+      fin.forEach(c=> addRow('fin_list','crit_fin', c.name || c, c.max || c.points || 0));
+    } else {
+      addRow('fin_list','crit_fin');
+    }
+    
+  let pre = [];
+  try { pre = JSON.parse(document.getElementById('data-pre').textContent || '[]'); } catch(_) { pre = []; }
+    if (pre.length > 0) {
+      pre.forEach(c=> addRow('pre_list','crit_pre', c.name || c, c.max || c.points || 0));
+    } else if (document.getElementById('has_prelims').checked) {
+      addRow('pre_list','crit_pre');
+    }
+    
+  validateForm();
+  initPositions();
+  });
+
+  function addRow(containerId, prefix, nameVal='', maxVal=''){
+    const c = document.getElementById(containerId);
+    const div = document.createElement('div');
+    div.className = 'criterion-row';
+    div.style.display='grid'; 
+    div.style.gridTemplateColumns='2fr 1fr auto'; 
+    div.style.gap='.5rem'; 
+    div.style.margin='.25rem 0';
+    div.innerHTML = `
+      <input type="text" name="${prefix}_name[]" placeholder="Criterion name" value="${nameVal}" required class="criterion-name">
+      <input type="number" step="0.01" name="${prefix}_max[]" placeholder="Max points" value="${maxVal}" required min="0" class="criterion-max">
+      <button type="button" class="secondary remove-btn">Remove</button>
+    `;
+    
+    div.querySelector('.remove-btn').onclick = ()=>{ 
+      div.remove(); 
+      computeTotals(); 
+      validateForm();
+    };
+    
+    const inputs = div.querySelectorAll('input');
+    inputs.forEach(input => {
+      input.addEventListener('input', () => {
+        computeTotals();
+        validateForm();
+      });
+    });
+    
+    c.appendChild(div);
+    computeTotals();
+    validateForm();
+  }
+
+  function validateForm() {
+    const form = document.getElementById('eventForm');
+    const submitBtn = document.getElementById('submitBtn');
+    const hasPrelims = document.getElementById('has_prelims').checked;
+    const eventName = document.getElementById('eventName').value.trim();
+    
+    const nameValid = eventName !== '';
+    
+    const finCriteria = document.querySelectorAll('#fin_list .criterion-name');
+    let finValid = finCriteria.length > 0;
+    
+  
+    finCriteria.forEach(input => {
+      if (input.value.trim() === '') {
+        finValid = false;
+      }
+    });
+    
+    
+    let preValid = true;
+    if (hasPrelims) {
+      const preCriteria = document.querySelectorAll('#pre_list .criterion-name');
+      preValid = preCriteria.length > 0;
+      
+      
+      preCriteria.forEach(input => {
+        if (input.value.trim() === '') {
+          preValid = false;
+        }
+      });
+    }
+    
+    
+    document.getElementById('fin_validation').style.display = finValid ? 'none' : 'inline';
+    
+    if (hasPrelims) {
+      document.getElementById('pre_validation').style.display = preValid ? 'none' : 'inline';
+    } else {
+      document.getElementById('pre_validation').style.display = 'none';
+    }
+    
+  
+    const formValid = nameValid && finValid && (hasPrelims ? preValid : true);
+    submitBtn.disabled = !formValid;
+    
+ 
+    if (formValid) {
+      submitBtn.classList.remove('invalid');
+      submitBtn.classList.add('valid');
+    } else {
+      submitBtn.classList.remove('valid');
+      submitBtn.classList.add('invalid');
+    }
+    
+    return formValid;
+  }
+
+
+  function computeTotals(){
+    function sum(prefix){
+      let total=0; 
+      document.querySelectorAll(`input[name='${prefix}_max[]']`).forEach(i=>{ 
+        total += parseFloat(i.value||0); 
+      }); 
+      return total;
+    }
+    
+    const finTotal = sum('crit_fin');
+    const preTotal = sum('crit_pre');
+    
+    document.getElementById('fin_total').textContent = finTotal.toFixed(2);
+    document.getElementById('pre_total').textContent = preTotal.toFixed(2);
+  }
+
+  function initPositions(){
+    let preset = {};
+    try { preset = JSON.parse(document.getElementById('data-pos').textContent || '{}'); } catch(_) { preset = {}; }
+    const keys = Object.keys(preset).sort((a,b)=>parseInt(a)-parseInt(b));
+    if (keys.length === 0) {
+      ['1','2','3','4'].forEach(k=> addPosRow(k, ({'1':60,'2':55,'3':40,'4':30})[k]));
+    } else {
+      keys.forEach(k=> addPosRow(k, preset[k]));
+    }
+    document.getElementById('pos_add').addEventListener('click', ()=> addPosRow('', ''));
+  }
+
+  function addPosRow(rankVal, pointsVal){
+    const c = document.getElementById('pos_list');
+    const div = document.createElement('div');
+    div.className = 'criterion-row';
+    div.style.display='grid';
+    div.style.gridTemplateColumns='1fr 1fr auto';
+    div.style.gap='.5rem';
+    div.style.margin='.25rem 0';
+    div.innerHTML = `
+      <input type="number" min="1" step="1" name="pos_rank[]" placeholder="Rank (e.g., 1)" value="${rankVal}" required>
+      <input type="number" min="0" step="1" name="pos_points[]" placeholder="Points" value="${pointsVal}" required>
+      <button type="button" class="secondary remove-pos">Remove</button>
+    `;
+    div.querySelector('.remove-pos').onclick = ()=> div.remove();
+    c.appendChild(div);
+  }
+
+  
+  document.getElementById('has_prelims').addEventListener('change', function() {
+    const preSec = document.getElementById('pre_section');
+    preSec.hidden = !this.checked;
+    
+  
+    if (this.checked && document.querySelectorAll('#pre_list .criterion-name').length === 0) {
+      addRow('pre_list','crit_pre');
+    }
+    
+    validateForm();
+  });
+
+
+  const hasSub = document.getElementById('has_submission');
+  const subOpts = document.getElementById('submission_opts');
+  function toggleSubOpts(){ subOpts.hidden = !hasSub.checked; }
+  hasSub.addEventListener('change', toggleSubOpts);
+  toggleSubOpts();
+
+  
+  document.getElementById('fin_add').addEventListener('click', () => {
+    addRow('fin_list','crit_fin');
+  });
+  
+  document.getElementById('pre_add').addEventListener('click', () => {
+    addRow('pre_list','crit_pre');
+  });
+
+  const dlg = document.createElement('dialog');
+  dlg.innerHTML = '<p>Please fix the validation errors before submitting.</p><form method="dialog"><button>OK</button></form>';
+  document.body.appendChild(dlg);
+  document.getElementById('eventForm').addEventListener('submit', function(e) {
+    if (!validateForm()) {
+      e.preventDefault();
+      if (typeof dlg.showModal === 'function') dlg.showModal(); else dlg.setAttribute('open','open');
+      return;
+    }
+    const ranks = Array.from(document.querySelectorAll("input[name='pos_rank[]']")).map(i=>parseInt(i.value||0));
+    const must = [1,2,3];
+    if (!must.every(m=>ranks.includes(m))) {
+      e.preventDefault();
+      const d2 = document.createElement('dialog');
+      d2.innerHTML = '<p>Please provide position points for 1st, 2nd and 3rd.</p><form method="dialog"><button>OK</button></form>';
+      document.body.appendChild(d2);
+      if (typeof d2.showModal === 'function') d2.showModal(); else d2.setAttribute('open','open');
+    }
+  });
+</script>
+
+<style>
+  .validation-error {
+    font-size: 0.8rem;
+    font-weight: bold;
+  }
+  
+  button.invalid { background-color: #7f1d1d; border-color: #7f1d1d; color: #fecaca; }
+  button.valid { background-color: #14532d; border-color: #14532d; color: #bbf7d0; }
+  
+  .criterion-row {
+    transition: all 0.3s ease;
+  }
+  
+  .criterion-row:hover { background-color: rgba(148, 163, 184, 0.08); }
+</style>
+{% endblock %}

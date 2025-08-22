@@ -1,0 +1,16 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2>Profile</h2>
+<form method="post">
+  <label>School Name<input type="text" value="{{ user.profile.school_name }}" disabled></label>
+  <label>School Address<textarea name="school_address">{{ user.profile.school_address }}</textarea></label>
+  <label>School Email<input type="email" name="school_email" value="{{ user.profile.school_email }}"></label>
+  <label>Teacher Name<input type="text" name="teacher_name" value="{{ user.profile.teacher_name }}"></label>
+  <label>Teacher Phone<input type="text" name="teacher_phone" value="{{ user.profile.teacher_phone }}"></label>
+  <label>Teacher Email<input type="email" name="teacher_email" value="{{ user.profile.teacher_email }}"></label>
+  <label>Student Name<input type="text" name="student_name" value="{{ user.profile.student_name }}"></label>
+  <label>Student Email<input type="email" name="student_email" value="{{ user.profile.student_email }}"></label>
+  <label>Student Phone<input type="text" name="student_phone" value="{{ user.profile.student_phone }}"></label>
+  <button type="submit">Save</button>
+</form>
+{% endblock %}

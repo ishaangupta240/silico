@@ -1,0 +1,20 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2>School Registration</h2>
+<form method="post">
+  <label>School Name<input type="text" name="school_name" value="{{ data.school_name if data else '' }}" required></label>
+  <label>School Address<textarea name="school_address">{{ data.school_address if data else '' }}</textarea></label>
+  <label>School Email<input type="email" name="school_email" value="{{ data.school_email if data else '' }}" required></label>
+  <hr>
+  <h4>Teacher Incharge</h4>
+  <label>Name<input type="text" name="teacher_name" value="{{ data.teacher_name if data else '' }}" required></label>
+  <label>Phone<input type="text" name="teacher_phone" value="{{ data.teacher_phone if data else '' }}" required></label>
+  <label>Email<input type="email" name="teacher_email" value="{{ data.teacher_email if data else '' }}" required></label>
+  <hr>
+  <h4>Student Incharge</h4>
+  <label>Name<input type="text" name="student_name" value="{{ data.student_name if data else '' }}" required></label>
+  <label>Phone<input type="text" name="student_phone" value="{{ data.student_phone if data else '' }}" required></label>
+  <label>Email<input type="email" name="student_email" value="{{ data.student_email if data else '' }}" required></label>
+  <button type="submit">Register</button>
+</form>
+{% endblock %}

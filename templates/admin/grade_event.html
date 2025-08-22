@@ -1,0 +1,185 @@
+{% extends 'base.html' %}
+{% block content %}
+<section>
+    <header>
+        <h2>Grade Event: {{ event.name }}</h2>
+    </header>
+
+    <style>
+        .criteria-score { width: 6rem; }
+        .total-score { font-weight: 700; }
+        .submission-content {
+            max-height: 220px; overflow-y: auto; padding: .75rem; border: 1px solid var(--card-border); border-radius: 8px;
+            background: var(--card-bg);
+        }
+        .stage-row { display: flex; align-items: center; gap: .75rem; margin: .5rem 0 1rem; }
+        .rank-col { white-space: nowrap; font-weight: 700; }
+        details summary { cursor: pointer; }
+    </style>
+
+    <div class="stage-row">
+        <nav>
+            <ul>
+                <li><a href="{{ url_for('grade_event', event_id=event_id, stage='prelims') }}" role="button" class="{{ 'contrast' if stage == 'prelims' else '' }}" {% if not event.has_prelims %}aria-disabled="true"{% endif %}>Prelims</a></li>
+                <li><a href="{{ url_for('grade_event', event_id=event_id, stage='finals') }}" role="button" class="{{ 'contrast' if stage == 'finals' else '' }}">Finals</a></li>
+            </ul>
+        </nav>
+        <span>Max Total: <strong>{{ stage_max }}</strong></span>
+    </div>
+
+    <form method="POST">
+        <input type="hidden" name="stage" value="{{ stage }}" />
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Rank</th>
+                    <th>School</th>
+                    {% for c in (event.criteria_prelims if stage == 'prelims' else event.criteria_finals) %}
+                        {% set cname = c.name if c is mapping else c %}
+                        {% set cmax = c.max if c is mapping else 0 %}
+                        <th>{{ cname }}<br><small>Max: {{ cmax }}</small></th>
+                    {% endfor %}
+                    <th>Total</th>
+                    {% if stage == 'prelims' %}
+                        <th>Qualified</th>
+                    {% endif %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for school_id, registration in regs.items() %}
+                    {% set school_results = results.get(school_id, {}) %}
+                    {% set school_submission = submissions.get('entries', {}).get(school_id, []) %}
+                    <tr data-school-id="{{ school_id }}">
+                        <td class="rank-col" id="rank-{{ school_id }}">-</td>
+                        <td>
+                            <strong>{{ name_map[school_id] }}</strong>
+                            {% if school_submission %}
+                                <details>
+                                    <summary>View Submission</summary>
+                                    <div class="submission-content">
+                                        {{ school_submission[-1].entry_data | replace('\n', '<br>') | safe }}
+                                        <div><small>Submitted at: {{ school_submission[-1].submitted_at | format_datetime }}</small></div>
+                                    </div>
+                                </details>
+                            {% endif %}
+                        </td>
+
+                        {% for c in (event.criteria_prelims if stage == 'prelims' else event.criteria_finals) %}
+                            {% set cname = c.name if c is mapping else c %}
+                            {% set cmax = (c.max if c is mapping else 0) or (c.points if c is mapping else 0) %}
+                              {% set score_id = 'score_' + school_id + '_' + hashlib.md5((cname|string).encode()).hexdigest() %}
+                            {% set current_score = school_results.get('scores', {}).get(cname, 0) %}
+                            <td>
+                                <input type="number" class="criteria-score" id="{{ score_id }}" name="{{ score_id }}" value="{{ current_score }}" min="0" max="{{ cmax }}" step="0.1" oninput="updateTotal('{{ school_id }}')" />
+                            </td>
+                        {% endfor %}
+
+                        <td class="total-score" id="total-{{ school_id }}">{{ totals.get(school_id, 0) | round(2) }}</td>
+
+                        {% if stage == 'prelims' %}
+                            <td>
+                                <label>
+                                    <input type="checkbox" id="qualified_{{ school_id }}" name="qualified_{{ school_id }}" {% if school_results.get('qualified') %}checked{% endif %} />
+                                    Qualified
+                                </label>
+                            </td>
+                        {% endif %}
+                    </tr>
+                {% else %}
+                    <tr>
+                        <td colspan="{{ (event.criteria_prelims|length if stage == 'prelims' else event.criteria_finals|length) + (4 if stage == 'prelims' else 3) }}" style="text-align:center;">No registrations found for this stage.</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <div style="margin-top: 1rem; display:flex; gap:.5rem;">
+            <input type="submit" value="Save Grades" />
+            <a class="button secondary" href="{{ url_for('manage_event', event_id=event_id) }}">Back to Event Management</a>
+        </div>
+    </form>
+
+        <script>
+                    document.addEventListener('keydown', function(e){
+                        const el = e.target;
+                        if (el && el.classList && el.classList.contains('criteria-score') && e.key === 'Enter') {
+                            e.preventDefault();
+                        }
+                    });
+        function clampToMax(input) {
+            const value = parseFloat(input.value) || 0;
+            const max = parseFloat(input.max) || 0;
+            return Math.min(value, max);
+        }
+
+        function computeAndSetTotal(schoolId) {
+            let total = 0;
+            const inputs = document.querySelectorAll(`[id^="score_${schoolId}_"]`);
+            inputs.forEach(input => total += clampToMax(input));
+            const totalCell = document.getElementById(`total-${schoolId}`);
+            if (totalCell) totalCell.textContent = total.toFixed(2);
+            return total;
+        }
+
+        function ordinal(n) {
+            const s = ["th", "st", "nd", "rd"], v = n % 100;
+            return n + (s[(v - 20) % 10] || s[v] || s[0]);
+        }
+
+                 function updateAllTotalsAndRank() {
+                        const tbody = document.querySelector('table tbody');
+            if (!tbody) return;
+                        const rows = Array.from(tbody.querySelectorAll('tr[data-school-id]'));
+            if (rows.length === 0) return;
+
+                        const active = document.activeElement;
+                        const activeId = active && active.id ? active.id : null;
+                        const selStart = (active && typeof active.selectionStart === 'number') ? active.selectionStart : null;
+                        const selEnd = (active && typeof active.selectionEnd === 'number') ? active.selectionEnd : null;
+
+                        const data = rows.map(row => {
+                const schoolId = row.getAttribute('data-school-id');
+                const total = computeAndSetTotal(schoolId);
+                return { schoolId, total, row };
+            });
+
+            data.sort((a, b) => b.total - a.total);
+
+            data.forEach((item, index) => {
+                const rankCell = document.getElementById(`rank-${item.schoolId}`);
+                if (rankCell) rankCell.textContent = ordinal(index + 1);
+                                tbody.appendChild(item.row);
+            });
+
+                        if (activeId) {
+                            const el = document.getElementById(activeId);
+                            if (el) {
+                                el.focus({ preventScroll: true });
+                                try {
+                                    if (selStart !== null && selEnd !== null) {
+                                        el.setSelectionRange(selStart, selEnd);
+                                    }
+                                } catch(_){}
+                            }
+                        }
+        }
+
+        function updateTotal(schoolId) {
+            computeAndSetTotal(schoolId);
+            updateAllTotalsAndRank();
+        }
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            const scoreInputs = document.querySelectorAll('.criteria-score');
+            scoreInputs.forEach(input => {
+                input.addEventListener('input', function() {
+                    const schoolId = this.id.split('_')[1];
+                    updateTotal(schoolId);
+                });
+            });
+            updateAllTotalsAndRank();
+        });
+    </script>
+</section>
+{% endblock %}

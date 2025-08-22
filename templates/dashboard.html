@@ -1,0 +1,84 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2>Dashboard</h2>
+<p>Welcome, {{ user.profile.teacher_name if user.role=='school' else user.role|capitalize }}</p>
+<h3>Available Events</h3>
+{% if declared %}
+<p><strong>Overall results declared.</strong> See <a href="{{ url_for('public_results') }}">Results</a>.</p>
+{% endif %}
+
+<div class="grid">
+  {% for id, e in events.items() %}
+  <article>
+    <header>
+      <h4 style="margin:0">{{ e.name }}</h4>
+      {% if e.has_submission %}<small class="muted">Submissions enabled</small>{% endif %}
+    </header>
+    <p style="margin:0.25rem 0">
+      {% set reg = my_regs.get(id) %}
+      {% if reg %}
+        <span class="secondary">Registered</span>
+      {% else %}
+        <span class="contrast">Not Registered</span>
+      {% endif %}
+      {% if prelims and prelims.get(id) is not none %}
+        {% if prelims.get(id) %}
+          <span class="secondary">Qualified</span>
+        {% else %}
+          <span class="contrast">Not Qualified</span>
+        {% endif %}
+      {% endif %}
+      {% if e.has_submission %}
+        <span>• Submissions Enabled</span>
+      {% endif %}
+    </p>
+    <footer style="display:flex; gap:.5rem; flex-wrap:wrap">
+      {% if user.role=='school' %}
+  <a role="button" href="{{ url_for('event_register', event_id=id) }}">{{ 'View' if reg_disabled and reg_disabled.get(id) else 'Register / Edit' }}</a>
+        {% if e.has_submission and reg %}
+          <a role="button" class="contrast" href="{{ url_for('submit_entry', event_id=id) }}">Submit Now</a>
+        <details>
+          <summary>Shareable Link (optional)</summary>
+          <form method="post" action="{{ url_for('setup_submission', event_id=id) }}">
+            <label>Password (leave blank to auto-generate)<input type="text" name="password" placeholder="Leave blank to keep or auto-generate"></label>
+            <label>Deadline<input type="datetime-local" name="deadline"></label>
+            <button type="submit">Generate/Update Shareable Link</button>
+            {% if share_link.get(id) %}
+              <small>Note: Link is already generated. You can only change password and deadline.</small>
+            {% endif %}
+          </form>
+          <div style="margin-top:.5rem">
+            {% if share_link.get(id) %}
+              <small style="display:block;margin-top:.25rem">Share this link (password required):<br><code>{{ share_link.get(id) }}</code></small>
+            {% else %}
+              <small>Optional: generate a shareable link if external judges/others will submit on your behalf.</small>
+            {% endif %}
+          </div>
+        </details>
+        {% endif %}
+      {% endif %}
+      {% if user.role in ['overall','event_head'] %}
+        <a role="button" class="secondary" href="{{ url_for('manage_event', event_id=id) }}">Manage</a>
+      {% endif %}
+    </footer>
+  </article>
+  {% endfor %}
+</div>
+{% if user.role in ['overall','event_head'] %}
+  <p><a href="{{ url_for('admin_home') }}">Go to Admin</a></p>
+{% endif %}
+{% endblock %}
+<script id="popup-data" type="application/json">{{ popup_link or '' | tojson }}</script>
+<script>
+  (function(){
+    const el = document.getElementById('popup-data');
+    if (!el) return;
+    let link = '';
+    try { link = JSON.parse(el.textContent || ''); } catch(_) { link = ''; }
+    if (!link) return;
+    const d = document.createElement('dialog');
+    d.innerHTML = `<h4>Shareable Link</h4><p>Provide this URL to anyone who will submit via link. It is password-protected.</p><p><code>${link}</code></p><form method="dialog"><button>OK</button></form>`;
+    document.body.appendChild(d);
+    if (typeof d.showModal === 'function') d.showModal(); else d.setAttribute('open','open');
+  })();
+  </script>

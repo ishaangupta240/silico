@@ -1,0 +1,23 @@
+{
+  "f8fec1d8-846e-49c5-8bde-45e2a4fc1d6e": {
+    "role": "overall",
+    "created_at": "2025-08-16T21:23:08.349156",
+    "verified": true,
+    "profile": {
+      "school_name": "CODE Club",
+      "school_address": "",
+      "school_email": "admin@codeclub.co.in",
+      "teacher_name": "CODE Club",
+      "teacher_phone": "",
+      "teacher_email": "admin@codeclub.co.in",
+      "student_name": "",
+      "student_email": "",
+      "student_phone": ""
+    },
+    "assigned_events": [],
+    "auth": {
+      "salt": "6d49b5c0022e4c5789086fa7ac65e198",
+      "password_hash": "308af1374b106c508a8125642983fe9cf910162e0adefdde770029e18f218eff"
+    }
+  }
+}

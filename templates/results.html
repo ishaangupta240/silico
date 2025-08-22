@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2>Results</h2>
+{% if not declared %}
+  <p>Results are not declared yet.</p>
+{% else %}
+{% if overall_winner_name %}
+  <article>
+    <header>Overall Winner</header>
+    <p><strong>{{ overall_winner_name }}</strong> — {{ overall_winner_points }} points</p>
+  </article>
+{% endif %}
+<table>
+  <thead><tr><th>Event</th><th>Top 3</th></tr></thead>
+  <tbody>
+    {% for id, names in top3.items() %}
+      <tr>
+        <td>{{ events[id].name if events[id] else id }}</td>
+        <td>
+          <ol>
+            {% for s in names %}
+              {% if s %}<li>{{ s }}</li>{% else %}<li>-</li>{% endif %}
+            {% endfor %}
+          </ol>
+        </td>
+      </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+{% endblock %}

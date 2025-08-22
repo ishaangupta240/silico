@@ -1,0 +1,28 @@
+{
+  "2025-08-22": [
+    {
+      "kind": "register",
+      "payload": {
+        "user_id": "a1e8b578-f72c-4064-a9a9-a5f4dd8eef0f",
+        "teacher_email": "ishaan@codeclub.co.in"
+      },
+      "ts": "2025-08-22T18:57:14.875278"
+    },
+    {
+      "kind": "submission",
+      "payload": {
+        "event_id": "e18afa67-20f7-4a1c-98d8-447767867f18",
+        "school_id": "a1e8b578-f72c-4064-a9a9-a5f4dd8eef0f"
+      },
+      "ts": "2025-08-22T18:59:52.549482"
+    },
+    {
+      "kind": "register",
+      "payload": {
+        "user_id": "c68a9e47-2610-4e51-a619-b6c5dd5b38d9",
+        "teacher_email": "ishaancodeclub19@gmail.com"
+      },
+      "ts": "2025-08-22T19:04:25.293379"
+    }
+  ]
+}

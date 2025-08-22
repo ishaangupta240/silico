@@ -1,0 +1,46 @@
+{% extends 'base.html' %}
+{% block content %}
+<style>
+  .hero { padding: 6rem 1rem 3rem; text-align: center; }
+  .hero h1 { font-size: clamp(2rem, 5vw, 3rem); margin-bottom: .75rem; }
+  .hero p { max-width: 720px; margin: 0 auto 1.25rem; }
+  .actions { display: flex; gap: .75rem; justify-content: center; flex-wrap: wrap; }
+  .actions a { text-decoration: none; }
+  .grid.features { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; margin-top: 2rem; }
+  .feature { padding: 1rem; background: var(--surface); border: 1px solid var(--border); border-radius: .75rem; }
+  .feature h3 { margin: .25rem 0 .5rem; font-size: 1.05rem; }
+</style>
+
+<section class="hero">
+  <h1>Symposium Platform</h1>
+  <p>Manage events, registrations, submissions, and results in a clean, distraction‑free interface.</p>
+  <div class="actions">
+    {% if not session.user_id %}
+      <a class="button" href="{{ url_for('register') }}">Get started</a>
+      <a class="button secondary" href="{{ url_for('public_results') }}">View results</a>
+    {% else %}
+      <a class="button" href="{{ url_for('dashboard') }}">Go to dashboard</a>
+      <a class="button secondary" href="{{ url_for('public_results') }}">View results</a>
+    {% endif %}
+  </div>
+</section>
+
+<section class="grid features">
+  <div class="feature">
+    <h3>School registration</h3>
+    <p>Create and manage profiles with simple forms.</p>
+  </div>
+  <div class="feature">
+    <h3>Event management</h3>
+    <p>Track events and participants with clarity.</p>
+  </div>
+  <div class="feature">
+    <h3>Submissions</h3>
+    <p>Collect and review entries with minimal friction.</p>
+  </div>
+  <div class="feature">
+    <h3>Results</h3>
+    <p>Share outcomes publicly in one place.</p>
+  </div>
+</section>
+{% endblock %}

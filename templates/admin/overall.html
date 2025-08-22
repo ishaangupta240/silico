@@ -1,0 +1,62 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2>Overall Standings</h2>
+
+{% if ranking and ranking|length > 0 %}
+<table>
+  <thead>
+    <tr>
+      <th>Rank</th>
+      <th>School</th>
+      <th style="text-align:right">Total Points</th>
+      <th>Breakdown</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for sid, total in ranking %}
+  <tr {% if loop.first %}style="outline: 2px solid var(--accent);"{% endif %}>
+      <td>{{ loop.index }}</td>
+      <td>
+        {{ name_map.get(sid, sid) }}
+        {% if loop.first %}
+          <span class="badge" style="margin-left:.5rem;">Winner</span>
+        {% endif %}
+      </td>
+      <td style="text-align:right">{{ total }}</td>
+      <td>
+        {% set per = breakdown.get(sid, {}) %}
+        {% if per %}
+          <details>
+            <summary>View</summary>
+            <ul>
+              {% for eid, pts in per.items() %}
+                <li><strong>{{ events.get(eid, {}).get('name', eid) }}</strong>: {{ pts }}</li>
+              {% endfor %}
+            </ul>
+          </details>
+        {% else %}
+          <small class="muted">No event points</small>
+        {% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+  <tfoot>
+    <tr>
+      <td colspan="4"><small>Points are awarded from finals positions based on each event's position_points.</small></td>
+    </tr>
+  </tfoot>
+  </table>
+{% else %}
+  <p>No points yet.</p>
+{% endif %}
+
+<div style="margin-top:1rem; display:flex; gap:.5rem; align-items:center;">
+  {% if not declared %}
+    <form method="post"><button type="submit" class="contrast">Declare Overall Results</button></form>
+  {% else %}
+    <span class="status-online"></span>
+    <strong>Overall results declared.</strong>
+  {% endif %}
+</div>
+{% endblock %}

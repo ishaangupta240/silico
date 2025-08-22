@@ -1,0 +1,81 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2>Manage Event - {{ event.name }}</h2>
+
+<div style="margin-bottom: 1rem;">
+    {% if user.role == 'overall' %}
+    <a role="button" href="{{ url_for('edit_event', event_id=event_id) }}">Edit Event</a>
+    <form method="post" action="{{ url_for('delete_event', event_id=event_id) }}" style="display: inline-block;" onsubmit="return confirm('Are you sure you want to delete this event? This action cannot be undone.');">
+        <button type="submit" class="contrast">Delete Event</button>
+    </form>
+    {% endif %}
+</div>
+
+<p><a href="{{ url_for('grade_event', event_id=event_id) }}" class="btn btn-primary">Grade Event</a></p>
+
+<h3>Registrations</h3>
+<table>
+  <thead><tr><th>School</th><th>Participants</th></tr></thead>
+  <tbody>
+    {% for school_id, reg in regs.items() %}
+    <tr>
+      <td>{{ name_map.get(school_id, school_id) }}</td>
+      <td>
+        <ul>
+        {% for p in reg.participants %}
+          <li>{{ p.name }} ({{ p.class }}) - {{ p.email }}</li>
+        {% endfor %}
+        </ul>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<h3>Submission Links (per-school)</h3>
+<p>Schools generate their own links from their dashboard. You can expire links here.</p>
+{% if subs.schools %}
+  <table>
+  <thead><tr><th>School</th><th>Status</th><th>Password</th><th>Deadline</th><th>Max Changes</th><th>Link</th><th>Actions</th></tr></thead>
+    <tbody>
+    {% for sid, conf in subs.schools.items() %}
+      <tr>
+  <td>{{ name_map.get(sid, sid) }}</td>
+        <td>{{ 'Enabled' if conf.enabled else 'Disabled' }}</td>
+        <td><code>{{ conf.password }}</code></td>
+        <td>{{ conf.deadline or 'None' }}</td>
+        <td>{{ conf.max_changes }}</td>
+        <td>
+          {% if conf.token %}
+            <code>{{ url_for('submit_entry_via_token', token=conf.token, _external=true) }}</code>
+          {% else %}
+            <small>Not generated</small>
+          {% endif %}
+        </td>
+        <td>
+          <form method="post" action="{{ url_for('expire_submission', event_id=event_id, school_id=sid) }}">
+            <button type="submit">Expire</button>
+          </form>
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+{% else %}
+  <p>No school-generated links yet.</p>
+{% endif %}
+
+{% if subs.entries %}
+<h4>Submissions</h4>
+  {% for school, entries in subs.entries.items() %}
+    <details>
+  <summary>{{ school }} ({{ entries|length }} entries)</summary>
+      <ol>
+        {% for ent in entries %}
+          <li>{{ ent.entry_data }} <small>at {{ ent.submitted_at }}</small></li>
+        {% endfor %}
+      </ol>
+    </details>
+  {% endfor %}
+{% endif %}
+{% endblock %}

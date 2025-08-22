@@ -1,0 +1,36 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2>Admin</h2>
+{% if user.role=='overall' %}
+  <p><a href="{{ url_for('create_event') }}">Create Event</a></p>
+  <p><a href="{{ url_for('manage_users') }}">Manage Users</a></p>
+  <p><a href="{{ url_for('overall') }}">Overall Results</a></p>
+  <h3>Overall Settings</h3>
+  <form method="post" action="{{ url_for('update_settings') }}">
+    <label>Submission deadline
+      <input type="datetime-local" name="submission_deadline" value="{{ settings.submission_deadline }}">
+    </label>
+    <label>Registration deadline
+      <input type="datetime-local" name="registration_deadline" value="{{ settings.registration_deadline }}">
+    </label>
+    <fieldset>
+      <legend>Lock Event Registration Editing</legend>
+      {% for id, e in events.items() %}
+        <label><input type="checkbox" name="lock_{{ id }}" {% if e.registration_edit_locked %}checked{% endif %}> {{ e.name }}</label>
+      {% endfor %}
+    </fieldset>
+    <div style="display:flex; gap: 0.5rem; align-items:center;">
+      <button type="submit">Save Settings</button>
+      <button type="submit" name="declare_results" value="1" {% if declared %}disabled{% endif %}>
+        {% if declared %}Results Declared{% else %}Declare Results{% endif %}
+      </button>
+    </div>
+  </form>
+{% endif %}
+<h3>Events</h3>
+<ul>
+  {% for id, e in events.items() %}
+  <li><a href="{{ url_for('manage_event', event_id=id) }}">{{ e.name }}</a> {% if user.role=='overall' %}- <a href="{{ url_for('edit_event', event_id=id) }}">Edit</a>{% endif %}</li>
+  {% endfor %}
+</ul>
+{% endblock %}
